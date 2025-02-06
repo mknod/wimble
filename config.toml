@@ -1,0 +1,36 @@
+[global]
+# Main configuration file for the Wimble 
+# global section should contain
+# the configuration that is shared across all the modules
+
+[streambot]
+enable = true
+channel = "jralamode"
+command_symbol = "!"
+
+
+
+[webserver]
+enable = false
+
+[webhook]
+enable = false
+
+[browser]
+enable = true
+#start_url = "https://twitch.tv"
+start_url = "https://90s.myretrotvs.com"
+start_cmd = "space"
+
+
+[goto]
+"90s" = "https://90s.myretrotvs.com"
+"80s" = "https://80s.myretrotvs.com"
+"70s" = "https://70s.myretrotvs.com"
+"60s" = "https://60s.myretrotvs.com"
+"50s" = "https://50s.myretrotvs.com"
+
+
+
+[builtins]
+"url" = "current_url"
