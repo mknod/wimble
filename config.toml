@@ -5,7 +5,7 @@
 
 [streambot]
 enable = true
-channel = "jralamode"
+channel = "twitch_channel_name"
 command_symbol = "!"
 
 
