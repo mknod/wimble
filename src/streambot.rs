@@ -1,4 +1,25 @@
 use crate::config;
+
+
+use async_trait::async_trait;
+use twitch_irc::login::{RefreshingLoginCredentials, TokenStorage, UserAccessToken};
+use twitch_irc::ClientConfig;
+
+
+#[derive(Debug)]
+struct CustomTokenStorage {
+    client_id: String,
+    client_secret: String,
+    access_token: String,
+    refresh_token: String,
+    // fields...
+}
+
+
+
+
+
+/* use crate::config;
 use crate::send_command;
 use twitch_irc::ClientConfig;
 use twitch_irc::SecureTCPTransport;
@@ -107,3 +128,4 @@ pub async fn streambot() {
     }
 
 
+ */
