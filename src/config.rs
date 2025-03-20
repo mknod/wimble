@@ -1,93 +1,41 @@
-use config::{Config, ConfigError, File};
+use config::{Config, File};
 use serde::Deserialize;
-//use serde_derive::Deserialize;
-use std::sync::OnceLock;
-
-// #[derive(Debug, Deserialize)]
-// #[allow(unused)]
-// struct Global {
-    
-// }
-
-static CONFIG: OnceLock<Settings> = OnceLock::new();
-
+use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
-#[allow(unused)]
-pub struct Browser {
-   pub enabled: bool,
-    start_url: String,
-    start_cmd: String,
-
+pub struct GlobalConfig {
+    pub placeholder: bool,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(unused)]
-pub struct Streambot {
-    enabled: bool,
-    channel: String,
-    username: String,
-    command_symbol: String,
-    client_id: String,
-    access_token: String,
-    refresh_token: String,
-}
-
-
-impl Streambot {
-    pub fn enabled(&self) -> bool {
-        self.enabled
-    }
-    
-    pub fn channel(&self) -> &str {
-        &self.channel
-    }
-    
-    pub fn username(&self) -> &str {
-        &self.username
-    }
-    
-    pub fn command_symbol(&self) -> &str {
-        &self.command_symbol
-    }
-    
-    pub fn client_id(&self) -> &str {
-        &self.client_id
-    }
-    
-    pub fn access_token(&self) -> &str {
-        &self.access_token
-    }
-    
-    pub fn refresh_token(&self) -> &str {
-        &self.refresh_token
-    }
+pub struct StreambotConfig {
+    pub enabled: bool,
+    pub channel: String,
+    pub username: String,
+    pub command_symbol: String,
+    pub access_token: String,
+    pub refresh_token: String,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(unused)]
-pub struct Settings {
- //   pub(crate) global: Global,
-    pub(crate) browser: Browser,
-    pub(crate) streambot: Streambot,
+pub struct BrowserConfig {
+    pub enabled: bool,
+    pub start_url: String,
+    pub goto: HashMap<String, String>,  
+    
 }
 
-impl Settings {
-pub fn new() -> &'static Settings {
-    CONFIG.get_or_init(|| 
-        Config::builder()
+#[derive(Debug, Deserialize)]
+pub struct AppConfig {
+    pub global: GlobalConfig,
+    pub streambot: StreambotConfig,
+    pub browser: BrowserConfig,
+}
+
+pub fn load_config() -> Result<AppConfig, config::ConfigError> {
+    let settings = Config::builder()
         .add_source(File::with_name("config"))
-        .build()
-        .unwrap()
-        .try_deserialize()
-        .unwrap()
-    )
+        .build()?;
+    
+    settings.try_deserialize::<AppConfig>()
 }
-
-pub fn streambot(&self) -> &Streambot {
-    &self.streambot
-}
-
-
-}
-

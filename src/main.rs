@@ -1,44 +1,30 @@
-// Import from your own library crate
-use wimble::streambot::Streambot;
-use wimble::config::Settings;
+use wimble::streambot::Bot;
+use wimble::browser::Browser;
+use wimble::config::load_config;
+use tokio::task;
 
 #[tokio::main]
 async fn main() {
-    let settings = Settings::new();
-    println!("Settings: {:?}", settings);
+    println!("Starting Wimble");
+    let config = load_config().expect("Failed to load config");
 
-    let streambot = Streambot::new(
-        settings.streambot().channel().to_owned(),
-        settings.streambot().username().to_owned(),
-        settings.streambot().command_symbol().to_owned(),
-        settings.streambot().access_token().to_owned(),
-    );
+    // Initialize browser
+    let (browser, browser_tx) = Browser::new(&config.browser).await.expect("Failed to initialize browser");
 
-    streambot.start_streambot().await;
+    // Open the start URL
+    browser.goto(&config.browser.start_url).await.expect("Failed to load page");
 
+    // Start a task to keep the browser alive
+    let browser_task = task::spawn(async move {
+        browser.keep_alive().await;
+    });
+
+    // Initialize and start bot
+    let mut bot = Bot::new(&config.streambot, browser_tx);
+    let bot_task = task::spawn(async move {
+        bot.run().await;
+    });
+
+    // Run both tasks in parallel
+    let _ = tokio::join!(browser_task, bot_task);
 }
-
-
-// async fn start_browser() -> Option<()> {
-//      if browser::init_driver().await.is_err() {
-//           return None;
-//      }
-//      if browser::browser().await.is_err() {
-//           return None;
-//      }
-//      Some(())
-//      //let _ = browser::browser_command("Up".to_string());
-// }
-
-// async fn start_streambot() {
-//      //streambot::streambot().await;
-// }
-
-// If a command is recieved from the streambot, send it to the browser
-//async fn send_command(command: String) {
-//     let _ = browser::browser_command(command).await;
-//}
-
-//async fn send_chat_message(message: String) {
-//     let _ = streambot::send_chat_message(message).await;
-//}
