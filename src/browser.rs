@@ -31,6 +31,9 @@ impl Browser {
 
         let (tx, mut rx) = mpsc::channel(10); // Channel to receive keypress commands
 
+        // I kind of hate this, but it's the only way I could think to get it to work. 
+        // This is where the browser commands are actually executed, 
+        // They are sent via browser_tx in the Bot struct.
         let driver_clone = browser.driver.clone();
         task::spawn(async move {
             while let Some(command) = rx.recv().await {
@@ -38,12 +41,14 @@ impl Browser {
                 tokio::spawn(async move {
                     if let Ok(el) = driver_clone.find(By::Tag("body")).await {
                         match command {
+                            // If the command is a predefined keypress, send the key
                             BrowserCommand::PredefinedKey(key) => {
                                 // Send predefined keypress
                                 if let Err(e) = el.send_keys(key).await {
                                     eprintln!("Failed to send predefined key: {:?}", e);
                                 }
                             }
+                            // If the command is a raw character, send the character
                             BrowserCommand::RawCharacter(text) => {
                                 // Send raw character input
                                 if let Err(e) = el.send_keys(text.as_str()).await {
