@@ -12,7 +12,7 @@ pub struct Bot {
     incoming_messages: mpsc::UnboundedReceiver<ServerMessage>,
     client: TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>,
     command_symbol: String,
-    browser_tx: mpsc::Sender<keys::Key>, // Channel to send key commands
+    browser_tx: mpsc::Sender<keys::Key>, 
 }
 
 impl Bot {
