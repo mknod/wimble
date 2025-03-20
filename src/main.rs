@@ -12,6 +12,7 @@ async fn main() {
     // Initialize the browser with the loaded configuration
     let (browser, browser_tx) = Browser::new(&config.browser).await.expect("Failed to initialize browser");
 
+
     // Open the start URL specified in the configuration
     browser.goto(&config.browser.start_url).await.expect("Failed to load page");
 
@@ -21,7 +22,9 @@ async fn main() {
     });
 
     // Initialize the bot with the loaded configuration and the browser's Sender
+//let mut bot = Bot::new(&config.streambot, browser_tx);
     let mut bot = Bot::new(&config.streambot, browser_tx);
+
     // Start a background task to run the bot
     let bot_task = task::spawn(async move {
         bot.run().await;

@@ -8,6 +8,12 @@ pub struct Browser {
     driver: WebDriver, // WebDriver instance to control the browser
 }
 
+#[derive(Debug, Clone)]
+pub enum BrowserCommand {
+    PredefinedKey(keys::Key), // Predefined keypresses
+    RawCharacter(String),     // Single character keypresses
+}
+
 impl Browser {
     /// Initializes a new Chrome WebDriver instance and starts a background task to listen for commands.
     /// 
@@ -18,36 +24,41 @@ impl Browser {
     /// # Returns
     /// 
     /// A tuple containing the Browser instance and a Sender for sending keypress commands.
-    pub async fn new(config: &BrowserConfig) -> WebDriverResult<(Self, mpsc::Sender<keys::Key>)> {
+    pub async fn new(config: &BrowserConfig) -> WebDriverResult<(Self, mpsc::Sender<BrowserCommand>)> {
         let mut caps = ChromeCapabilities::new();
-        // Uncomment the following lines to run the browser in headless mode
-        // caps.add_arg("--headless").unwrap();
-        // caps.add_arg("--disable-gpu").unwrap();
-        
-        // Create a new WebDriver instance with the specified capabilities
         let driver = WebDriver::new("http://localhost:9515", caps).await?;
         let browser = Self { driver };
 
-        // Create a channel to receive keypress commands
-        let (tx, mut rx) = mpsc::channel(10);
+        let (tx, mut rx) = mpsc::channel(10); // Channel to receive keypress commands
 
-        // Clone the WebDriver instance for use in the background task
         let driver_clone = browser.driver.clone();
         task::spawn(async move {
-            // Listen for keypress commands and send them to the browser
-            while let Some(key) = rx.recv().await {
-                let element = driver_clone.find(By::Tag("body")).await;
-                if let Ok(el) = element {
-                    if let Err(e) = el.send_keys(key).await {
-                        eprintln!("Failed to send key: {:?}", e);
+            while let Some(command) = rx.recv().await {
+                let driver_clone = driver_clone.clone(); // Clone WebDriver for async move
+                tokio::spawn(async move {
+                    if let Ok(el) = driver_clone.find(By::Tag("body")).await {
+                        match command {
+                            BrowserCommand::PredefinedKey(key) => {
+                                // Send predefined keypress
+                                if let Err(e) = el.send_keys(key).await {
+                                    eprintln!("Failed to send predefined key: {:?}", e);
+                                }
+                            }
+                            BrowserCommand::RawCharacter(text) => {
+                                // Send raw character input
+                                if let Err(e) = el.send_keys(text.as_str()).await {
+                                    eprintln!("Failed to send raw character key: {:?}", e);
+                                }
+                            }
+                        }
                     }
-                }
+                });
             }
         });
 
-        // Return the Browser instance and Sender
-        Ok((browser, tx))
+        Ok((browser, tx)) // Return the Browser instance and Sender
     }
+
 
     /// Opens a URL in the browser.
     /// 

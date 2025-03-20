@@ -1,4 +1,5 @@
 use crate::config::StreambotConfig;
+use crate::browser::BrowserCommand; 
 use tokio::sync::mpsc;
 use twitch_irc::login::StaticLoginCredentials;
 use twitch_irc::ClientConfig;
@@ -12,7 +13,7 @@ pub struct Bot {
     incoming_messages: mpsc::UnboundedReceiver<ServerMessage>, // Receiver for incoming Twitch messages
     client: TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>, // Twitch IRC client
     command_symbol: String, // Symbol used to identify commands
-    browser_tx: mpsc::Sender<keys::Key>, // Sender for sending keypress commands to the browser
+    browser_tx: mpsc::Sender<BrowserCommand>, // Sender for sending keypress commands to the browser
 }
 
 impl Bot {
@@ -26,7 +27,9 @@ impl Bot {
     /// # Returns
     /// 
     /// A new Bot instance.
-    pub fn new(config: &StreambotConfig, browser_tx: mpsc::Sender<keys::Key>) -> Self {
+    pub fn new(config: &StreambotConfig, browser_tx: mpsc::Sender<BrowserCommand>) -> Self {
+
+    //pub fn new(config: &StreambotConfig, browser_tx: mpsc::Sender<keys::Key>) -> Self {
         let username = &config.username;
         let access_token = &config.access_token;
         let channel = &config.channel;
@@ -42,6 +45,7 @@ impl Bot {
         client.join(channel.to_string()).expect("Failed to join channel");
 
         Self { incoming_messages, client, command_symbol, browser_tx }
+        
     }
 
     /// Runs the bot, listening for incoming messages and matching commands.
@@ -64,26 +68,34 @@ impl Bot {
     pub async fn match_command(&self, chat_message: PrivmsgMessage) {
         let content = chat_message.message_text.clone();
 
-        // Check if the message starts with the command symbol
         if content.starts_with(&self.command_symbol) {
             let command = content[self.command_symbol.len()..].trim().to_string();
-            
-            // Match the command to a corresponding keypress
-            let key = match command.as_str() {
-                "up" => Some(keys::Key::Up),
-                "down" => Some(keys::Key::Down),
-                "left" => Some(keys::Key::Left),
-                "right" => Some(keys::Key::Right),
-                "space" => Some(keys::Key::Space),
-                _ => None,
+
+            let browser_command = match command.as_str() {
+                "up" => Some(BrowserCommand::PredefinedKey(keys::Key::Up)),
+                "down" => Some(BrowserCommand::PredefinedKey(keys::Key::Down)),
+                "left" => Some(BrowserCommand::PredefinedKey(keys::Key::Left)),
+                "right" => Some(BrowserCommand::PredefinedKey(keys::Key::Right)),
+                "space" => Some(BrowserCommand::PredefinedKey(keys::Key::Space)),
+                "enter" => Some(BrowserCommand::PredefinedKey(keys::Key::Enter)),
+                "esc" => Some(BrowserCommand::PredefinedKey(keys::Key::Escape)),
+                "delete" => Some(BrowserCommand::PredefinedKey(keys::Key::Delete)),
+                _ => {
+                    // If the command is a single character, send it as a RawCharacter
+                    if command.len() == 1 {
+                        Some(BrowserCommand::RawCharacter(command))
+                    } else {
+                        None // Ignore invalid commands
+                    }
+                }
             };
 
-            // Send the keypress command to the browser
-            if let Some(key) = key {
-                if let Err(e) = self.browser_tx.send(key).await {
+            if let Some(command) = browser_command {
+                if let Err(e) = self.browser_tx.send(command).await {
                     eprintln!("Failed to send key command: {}", e);
                 }
             }
         }
     }
 }
+
