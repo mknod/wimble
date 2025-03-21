@@ -95,27 +95,6 @@ impl Bot {
                         eprintln!("Failed to fetch URL");
                     }
                     None
-
-                    // let url = Some(BrowserCommand::FetchUrl);
-                    // if let Ok(url) = self.browser_tx.send(BrowserCommand::FetchUrl).await {
-                    //     let response = format!("Current URL: {:?}", url).to_string();
-                    //     //println!("Current URL: {:?}", response);
-                    //     //self.client.say(channel.to_string(), response).await.expect("Failed to send message");
-                    //     //self.client.say(format!("#{}", channel), response).await.expect("Failed to send message");
-                    //     //irc!["PRIVMSG", format!("#{}", channel), response];
-                    //     println!("Channel: {:?} response {:?}", channel, response);
-                    
-                    // // if let Err(e) = self.browser_tx.send(BrowserCommand::FetchUrl).await {
-                    // //     eprintln!("Failed to send FetchUrl command: {}", e);
-                    // // }
-                    // // // Fetch the URL and send it to the chat
-                    // // if let Ok(url) = self.client.current_url().await {
-                    // //     let response = format!("Current URL: {}", url);
-                    // //     self.client.say(channel.to_string(), response).await.expect("Failed to send message");
-                    // } else {
-                    //     eprintln!("Failed to fetch URL");
-                    // }
-                    // return;
                 }
                 _ => {
                     if command.len() == 1 {
