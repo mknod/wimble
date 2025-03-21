@@ -1,13 +1,13 @@
 Wimble
+
 Wimble is an early-stage experimental project that lets Twitch chat control a web browser in real-time. Think of it as a chaotic remote control for the internet, powered by your stream community.
 
 ⚙️ Getting Started
-bash
-Copy
-Edit
-git clone https://github.com/mknod/wimble.git
-cd wimble
-cargo build --release
+
+    git clone https://github.com/mknod/wimble.git
+    cd wimble
+    cargo build --release
+
 Wimble uses chromedriver under the hood, which must be running on port 9515 before you start.
 
 💡 Chromedriver Examples
@@ -15,20 +15,14 @@ Start chromedriver with:
 
 macOS/Linux:
 
-bash
-Copy
-Edit
-./chromedriver --port=9515
-Windows:
+    ./chromedriver --port=9515
 
-powershell
-Copy
-Edit
-chromedriver.exe --port=9515
+Windows:
+    chromedriver.exe --port=9515
 🧪 Example config.toml
-toml
-Copy
-Edit
+
+
+```
 [global]
 placeholder = true
 
@@ -52,22 +46,24 @@ google = "https://google.com"
 
 [browser.elements]
 youtube_url = { element = "//*[@id='movie_player']/div[3]/div[2]/div/a", attribute = "href" }
+```
+
 🎮 Chat Commands
+
 Your Twitch chat can send commands with the prefix (e.g. !) to control the browser:
 
 !up, !down, !left, !right, !space, !enter, !esc, !delete
 !<char> sends a single character (e.g. !a)
 !get_url prints the current browser URL back into the chat
 !<key> from [browser.goto] will navigate the browser to the associated URL
-Example:
 
-toml
-Copy
-Edit
+Example:
+```
 [browser.goto]
 youtube = "https://youtube.com"
 google = "https://google.com"
 Typing !youtube or !google in chat will open those sites.
+```
 
 🔑 Twitch Token Setup
 Generate your Twitch access_token, refresh_token, and client_id using
@@ -78,12 +74,11 @@ Paste the tokens into your config.toml under [streambot].
 🔍 Browser Elements
 You can specify elements to query using XPath:
 
-toml
-Copy
-Edit
+```
 [browser.elements]
 youtube_url = { element = "//*[@id='movie_player']/div[3]/div[2]/div/a", attribute = "href" }
 Then use !get_url to have Wimble fetch and print the value of those elements (like a video link).
+```
 
 📜 License (in Legalese)
 By using this software or any part thereof, or if you find it useful for your own projects, you are hereby obligated to call your mother and be kind to other people for the next 10 years.
