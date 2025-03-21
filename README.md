@@ -1,6 +1,6 @@
-Wimble
+# Wimble
 
-Wimble is an early-stage experimental project that lets Twitch chat control a web browser in real-time. Think of it as a chaotic remote control for the internet, powered by your stream community.
+## Wimble is an early-stage experimental project that lets Twitch chat control a web browser in real-time. Think of it as a chaotic remote control for the internet, powered by your stream community.
 
 ⚙️ Getting Started
 
