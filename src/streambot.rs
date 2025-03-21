@@ -1,5 +1,7 @@
 use crate::config::StreambotConfig;
 use crate::browser::BrowserCommand; 
+use thirtyfour::IntoUrl;
+use twitch_irc::irc;
 use tokio::sync::mpsc;
 use twitch_irc::login::StaticLoginCredentials;
 use twitch_irc::ClientConfig;
@@ -13,6 +15,7 @@ pub struct Bot {
     incoming_messages: mpsc::UnboundedReceiver<ServerMessage>, // Receiver for incoming Twitch messages
     client: TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>, // Twitch IRC client
     command_symbol: String, // Symbol used to identify commands
+    channel: String,
     browser_tx: mpsc::Sender<BrowserCommand>, // Sender for sending keypress commands to the browser
 }
 
@@ -32,7 +35,7 @@ impl Bot {
     //pub fn new(config: &StreambotConfig, browser_tx: mpsc::Sender<keys::Key>) -> Self {
         let username = &config.username;
         let access_token = &config.access_token;
-        let channel = &config.channel;
+        let channel = config.channel.clone();
         let command_symbol = config.command_symbol.clone();
 
         // Create a new Twitch IRC client with the specified credentials
@@ -44,7 +47,7 @@ impl Bot {
         // Join the specified Twitch channel
         client.join(channel.to_string()).expect("Failed to join channel");
 
-        Self { incoming_messages, client, command_symbol, browser_tx }
+        Self { incoming_messages, client, command_symbol, channel, browser_tx }
         
     }
 
@@ -55,7 +58,7 @@ impl Bot {
         // Listen for incoming Twitch messages
         while let Some(message) = self.incoming_messages.recv().await {
             if let ServerMessage::Privmsg(chat_message) = message {
-                self.match_command(chat_message).await;
+                self.match_command( chat_message).await;
             }
         }
     }
@@ -67,15 +70,13 @@ impl Bot {
     /// * `chat_message` - The chat message containing the command.
     pub async fn match_command(&self, chat_message: PrivmsgMessage) {
         let content = chat_message.message_text.clone();
-
+        let channel = &self.channel;
         if content.starts_with(&self.command_symbol) {
+            
             let command = content[self.command_symbol.len()..].trim().to_string();
 
             let browser_command = match command.as_str() {
-                "get_url" => {
-                    // Use browser_tx to send a command to fetch URL instead
-                    Some(BrowserCommand::FetchUrl)
-                }
+
                 "up" => Some(BrowserCommand::PredefinedKey(keys::Key::Up)),
                 "down" => Some(BrowserCommand::PredefinedKey(keys::Key::Down)),
                 "left" => Some(BrowserCommand::PredefinedKey(keys::Key::Left)),
@@ -84,11 +85,43 @@ impl Bot {
                 "enter" => Some(BrowserCommand::PredefinedKey(keys::Key::Enter)),
                 "esc" => Some(BrowserCommand::PredefinedKey(keys::Key::Escape)),
                 "delete" => Some(BrowserCommand::PredefinedKey(keys::Key::Delete)),
+                "get_url" => {
+                    let (url_sender, mut url_receiver) = mpsc::channel(1);
+                    self.browser_tx.send(BrowserCommand::FetchUrl(url_sender)).await.unwrap();
+                    if let Some(url) = url_receiver.recv().await {
+                        //println!("Fetched URL: {}", url);
+                        self.client.say(channel.to_string(), url).await.expect("Failed to send message");
+                    } else {
+                        eprintln!("Failed to fetch URL");
+                    }
+                    None
+
+                    // let url = Some(BrowserCommand::FetchUrl);
+                    // if let Ok(url) = self.browser_tx.send(BrowserCommand::FetchUrl).await {
+                    //     let response = format!("Current URL: {:?}", url).to_string();
+                    //     //println!("Current URL: {:?}", response);
+                    //     //self.client.say(channel.to_string(), response).await.expect("Failed to send message");
+                    //     //self.client.say(format!("#{}", channel), response).await.expect("Failed to send message");
+                    //     //irc!["PRIVMSG", format!("#{}", channel), response];
+                    //     println!("Channel: {:?} response {:?}", channel, response);
+                    
+                    // // if let Err(e) = self.browser_tx.send(BrowserCommand::FetchUrl).await {
+                    // //     eprintln!("Failed to send FetchUrl command: {}", e);
+                    // // }
+                    // // // Fetch the URL and send it to the chat
+                    // // if let Ok(url) = self.client.current_url().await {
+                    // //     let response = format!("Current URL: {}", url);
+                    // //     self.client.say(channel.to_string(), response).await.expect("Failed to send message");
+                    // } else {
+                    //     eprintln!("Failed to fetch URL");
+                    // }
+                    // return;
+                }
                 _ => {
                     if command.len() == 1 {
                         Some(BrowserCommand::RawCharacter(command))
                     } else {
-                        None
+                        Some(BrowserCommand::Goto(command))
                     }
                 }
             };
@@ -100,5 +133,6 @@ impl Bot {
             }
         }
     }
+
 }
 

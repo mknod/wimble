@@ -14,8 +14,8 @@ pub struct Browser {
 pub enum BrowserCommand {
     PredefinedKey(keys::Key), // Predefined keypresses
     RawCharacter(String),     // Single character keypresses
-    FetchUrl,
-
+    FetchUrl(mpsc::Sender<String>),
+    Goto(String),             // New command to go to a specific URL
 }
 
 
@@ -46,9 +46,11 @@ impl Browser {
         // This is where the browser commands are actually executed, 
         // They are sent via browser_tx in the Bot struct.
         let driver_clone = browser.driver.clone();
+        let goto_config = config.goto.clone(); // Clone the goto configuration
         task::spawn(async move {
             while let Some(command) = rx.recv().await {
                 let driver_clone = driver_clone.clone(); // Clone WebDriver for async move
+                let goto_config = goto_config.clone(); // Clone the goto configuration for async move
                 tokio::spawn(async move {
                     if let Ok(el) = driver_clone.find(By::Tag("body")).await {
                         match command {
@@ -64,13 +66,26 @@ impl Browser {
                                     eprintln!("Failed to send raw character key: {:?}", e);
                                 }
                             }
-                            BrowserCommand::FetchUrl => {
+                            BrowserCommand::FetchUrl(sender) => {
                                 if let Ok(url) = driver_clone.current_url().await {
-                                    println!("Current URL: {}", url);
+                                    let url_string = url.to_string();
+                                    if let Err(e) = sender.send(url_string).await {
+                                        eprintln!("Failed to send URL: {:?}", e);
+                                    }
                                 } else {
                                     eprintln!("Failed to fetch URL");
                                 }
-                            },
+                            }
+                            BrowserCommand::Goto(key) => {
+                                println!("Going to URL for key: {}", key);
+                                if let Some(url) = goto_config.get(&key) {
+                                    if let Err(e) = driver_clone.goto(url).await {
+                                        eprintln!("Failed to go to URL {}: {:?}", url, e);
+                                    }
+                                } else {
+                                    eprintln!("No URL found for key: {}", key);
+                                }
+                            }
                         }
                     }
                 });
@@ -151,4 +166,6 @@ impl Browser {
             }
         }
     }
+
+    
 }
