@@ -72,6 +72,10 @@ impl Bot {
             let command = content[self.command_symbol.len()..].trim().to_string();
 
             let browser_command = match command.as_str() {
+                "get_url" => {
+                    // Use browser_tx to send a command to fetch URL instead
+                    Some(BrowserCommand::FetchUrl)
+                }
                 "up" => Some(BrowserCommand::PredefinedKey(keys::Key::Up)),
                 "down" => Some(BrowserCommand::PredefinedKey(keys::Key::Down)),
                 "left" => Some(BrowserCommand::PredefinedKey(keys::Key::Left)),
@@ -81,11 +85,10 @@ impl Bot {
                 "esc" => Some(BrowserCommand::PredefinedKey(keys::Key::Escape)),
                 "delete" => Some(BrowserCommand::PredefinedKey(keys::Key::Delete)),
                 _ => {
-                    // If the command is a single character, send it as a RawCharacter
                     if command.len() == 1 {
                         Some(BrowserCommand::RawCharacter(command))
                     } else {
-                        None // Ignore invalid commands
+                        None
                     }
                 }
             };

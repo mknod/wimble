@@ -18,11 +18,19 @@ pub struct StreambotConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ElementConfig {
+    pub element: String,  // XPath query
+    pub attribute: String, // Attribute to extract
+}
+
+
+#[derive(Debug, Deserialize)]
 pub struct BrowserConfig {
     pub enabled: bool,
     pub start_url: String,
-    pub goto: HashMap<String, String>,  
-    
+    pub goto: HashMap<String, String>,
+    pub elements: HashMap<String, ElementConfig>, // Maps names to ElementConfig
+
 }
 
 #[derive(Debug, Deserialize)]

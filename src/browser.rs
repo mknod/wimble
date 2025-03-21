@@ -1,20 +1,31 @@
 use crate::config::BrowserConfig;
 use thirtyfour::{prelude::*, ChromeCapabilities, common::keys};
+use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::task;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct Browser {
-    driver: WebDriver, // WebDriver instance to control the browser
+    pub driver: WebDriver, // WebDriver instance to control the browser
 }
 
 #[derive(Debug, Clone)]
 pub enum BrowserCommand {
     PredefinedKey(keys::Key), // Predefined keypresses
     RawCharacter(String),     // Single character keypresses
+    FetchUrl,
+
 }
 
+
 impl Browser {
+    fn clone(&self) -> Self {
+        Self {
+            driver: self.driver.clone(), // Clone the WebDriver instance
+        }
+    }
+
     /// Initializes a new Chrome WebDriver instance and starts a background task to listen for commands.
     /// 
     /// # Arguments
@@ -41,20 +52,25 @@ impl Browser {
                 tokio::spawn(async move {
                     if let Ok(el) = driver_clone.find(By::Tag("body")).await {
                         match command {
-                            // If the command is a predefined keypress, send the key
                             BrowserCommand::PredefinedKey(key) => {
                                 // Send predefined keypress
                                 if let Err(e) = el.send_keys(key).await {
                                     eprintln!("Failed to send predefined key: {:?}", e);
                                 }
                             }
-                            // If the command is a raw character, send the character
                             BrowserCommand::RawCharacter(text) => {
                                 // Send raw character input
                                 if let Err(e) = el.send_keys(text.as_str()).await {
                                     eprintln!("Failed to send raw character key: {:?}", e);
                                 }
                             }
+                            BrowserCommand::FetchUrl => {
+                                if let Ok(url) = driver_clone.current_url().await {
+                                    println!("Current URL: {}", url);
+                                } else {
+                                    eprintln!("Failed to fetch URL");
+                                }
+                            },
                         }
                     }
                 });
@@ -93,6 +109,46 @@ impl Browser {
     pub async fn keep_alive(&self) {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        }
+    }
+    pub async fn get_named_elements(&self, config: &BrowserConfig) -> WebDriverResult<HashMap<String, String>> {
+        let mut results = HashMap::new();
+
+        for (name, element_config) in &config.elements {
+            if let Ok(element) = self.driver.find(By::XPath(&element_config.element)).await {
+                let value = self.get_attribute_or_text(&element, &element_config.attribute).await.unwrap_or_default();
+                results.insert(name.clone(), value);
+            }
+        }
+
+        Ok(results)
+    }
+
+    /// Retrieves an element's attribute or text content.
+    ///
+    /// # Arguments
+    /// - `element`: The `WebElement` to extract data from.
+    /// - `attribute`: The requested attribute or `"text"` for inner text.
+    ///
+    /// # Returns
+    /// - `String`: The extracted value or an empty string on failure.
+    async fn get_attribute_or_text(&self, element: &WebElement, attribute: &str) -> WebDriverResult<String> {
+        if attribute == "text" {
+            return Ok(element.text().await?);
+        }
+        Ok(element.attr(attribute).await?.unwrap_or_default())
+    }
+    
+    pub async fn fetch_named_elements(&self, config: &BrowserConfig) {
+        match self.get_named_elements(config).await {
+            Ok(elements) => {
+                for (name, value) in &elements {
+                    println!("{} -> {}", name, value);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to get elements: {}", e);
+            }
         }
     }
 }
