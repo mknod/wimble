@@ -17,10 +17,12 @@ pub struct StreambotConfig {
     pub refresh_token: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ElementConfig {
     pub element: String,  // XPath query
     pub attribute: String, // Attribute to extract
+    pub iframe: Option<String>,  // Optional iframe selector (by id or CSS)
+
 }
 
 

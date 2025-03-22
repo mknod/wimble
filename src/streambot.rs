@@ -1,7 +1,5 @@
 use crate::config::StreambotConfig;
 use crate::browser::BrowserCommand; 
-use thirtyfour::IntoUrl;
-use twitch_irc::irc;
 use tokio::sync::mpsc;
 use twitch_irc::login::StaticLoginCredentials;
 use twitch_irc::ClientConfig;
@@ -89,7 +87,7 @@ impl Bot {
                     let (url_sender, mut url_receiver) = mpsc::channel(1);
                     self.browser_tx.send(BrowserCommand::FetchUrl(url_sender)).await.unwrap();
                     if let Some(url) = url_receiver.recv().await {
-                        //println!("Fetched URL: {}", url);
+                        println!("Fetched URL: {}", url);
                         self.client.say(channel.to_string(), url).await.expect("Failed to send message");
                     } else {
                         eprintln!("Failed to fetch URL");
@@ -97,6 +95,17 @@ impl Bot {
                     None
                 }
                 _ => {
+                    // Try dynamic element fetch command
+                    let (sender, mut receiver) = mpsc::channel(1);
+                        if let Err(e) = self.browser_tx.send(BrowserCommand::GetElementValue(command.clone(), sender)).await {
+                            eprintln!("Failed to send GetElementValue: {}", e);
+                            return;
+                        }
+                        if let Some(value) = receiver.recv().await {
+                            let msg = format!("{}: {}", command, value);
+                            self.client.say(channel.to_string(), msg).await.expect("Failed to send message");
+                        }                                
+                    
                     if command.len() == 1 {
                         Some(BrowserCommand::RawCharacter(command))
                     } else {
