@@ -282,6 +282,8 @@ impl Browser {
 
 
    pub async fn fetch_element_value(driver: &WebDriver, element_cfg: &ElementConfig) -> WebDriverResult<String> {
+    // FYI there is a "bug" I am stripping the # from the iframe selector here for my own purposes, probably a good idea to find if 
+    // #iframe exists or if iframe without the # exists on the page. 
     // Check if iframe exists in config.toml
     if let Some(iframe_selector) = &element_cfg.iframe {
         //let iframe_format = format!("{}", iframe_selector.strip_prefix("#").unwrap());
