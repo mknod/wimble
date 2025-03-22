@@ -157,10 +157,9 @@ impl Browser {
                             if let Some(element_cfg) = elements_config.get(&key) {
                                 let val = Browser::fetch_element_value(&driver_clone, element_cfg).await.unwrap_or_else(|_| "Error".into());
                                 let _ = sender.send(val).await;
-                                println!("Looking up key: {}", key);
-                                println!("Known keys: {:?}", elements_config.keys());
+
                             } else {
-                                let _ = sender.send("Key not found in config".to_string()).await;
+                                let _ = println!("{} not found in config", key);
                             }
                         }
 
