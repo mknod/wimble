@@ -28,7 +28,7 @@ placeholder = true
 
 [streambot]
 enabled = true
-channel = "jralamode"
+channel = "twitch_user_name"
 command_symbol = "!"
 client_id = "your-client-id"
 access_token = "your-access-token"
