@@ -44,16 +44,16 @@ impl Browser {
     /// A tuple containing the Browser instance and a Sender for sending keypress commands.
     pub async fn new(config: &BrowserConfig) -> WebDriverResult<(Self, mpsc::Sender<BrowserCommand>)> {
         let mut caps: ChromeCapabilities = ChromeCapabilities::new();
-        caps.add_arg("--auto-open-devtools-for-tabs")?; // Optional: opens DevTools
+        //caps.add_arg("--auto-open-devtools-for-tabs")?; // Optional: opens DevTools
         caps.add_arg("--start-maximized")?;
         caps.add_arg("--disable-infobars")?; 
         caps.add_arg("--disable-extensions")?;
         caps.add_arg("--disable-popup-blocking")?;
         caps.add_arg("--no-sandbox")?;
         caps.add_arg("--disable-dev-shm-usage")?;
-        caps.add_arg("--disable-gpu")?;
+       // caps.add_arg("--disable-gpu")?;
         caps.add_arg("--remote-debugging-port=9222")?; 
-        caps.add_arg("--auto-open-devtools-for-tabs")?;
+       // caps.add_arg("--auto-open-devtools-for-tabs")?;
 
         
         let driver = WebDriver::new("http://localhost:9515", caps).await?;
