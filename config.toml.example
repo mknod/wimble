@@ -1,0 +1,36 @@
+[global]
+# Main configuration file for the Wimble 
+# global section should contain
+# the configuration that is shared across all the modules
+placeholder = true
+
+[streambot]
+enabled = true
+channel = "twitch.channel.name"
+command_symbol = "!"
+client_id = "xxxxxxx"
+access_token = "xxxxxxxx"
+refresh_token = "xxxxxxx"
+username = "username"
+
+
+#[webserver]
+#enabled = false
+
+#[webhook]
+#enabled = false
+
+[browser]
+enabled = true
+start_url = "https://twitch.tv"
+start_cmd = "space"
+
+
+[browser.goto]
+"google" = "https://google.com"
+"duck" = "https://duckduckgo.com"
+
+[browser.elements]
+yt = { element = "#movie_player > div.ytp-chrome-top.ytp-show-cards-title > div.ytp-title > div > a", attribute = "href", iframe = "#myytplayer" }
+cartoons     = { element = "//label[@for='box_c']", attribute = "text" }
+comedy       = { element = "//label[@for='box_s']", attribute = "text" }
