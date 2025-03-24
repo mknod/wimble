@@ -21,6 +21,7 @@ pub enum BrowserCommand {
     FetchUrl(mpsc::Sender<String>),
     Goto(String),             // New command to go to a specific URL
     GetElementValue(String, mpsc::Sender<String>),
+    ClickElement(String),
     
 }
 
@@ -67,82 +68,7 @@ impl Browser {
         let elements_config = Arc::new(config.elements.clone());
 
         println!("Elements config: {:?}", elements_config);
-        // ======================================================================================
-        // task::spawn(async move {
-        //     while let Some(command) = rx.recv().await {
-        //         let driver_clone = driver_clone.clone(); // Clone WebDriver for async move
-        //         let goto_config = goto_config.clone(); // Clone the goto configuration for async move
-        //         let elements_config = Arc::clone(&elements_config); // ✅ cheap clone of the Arc
 
-        //         tokio::spawn(async move {
-
-        //             match command {
-
-        //                 BrowserCommand::GetElementValue(key, sender) => {
-        //                     println!("Handling GetElementValue command for key: {}", key);
-        //                     if let Some(element_cfg) = elements_config.get(&key) {
-        //                         let el_result = timeout(Duration::from_secs(5), driver_clone.find(By::XPath(&element_cfg.element))).await;
-        //                         if let Ok(Ok(el)) = el_result {
-        //                             let val = if element_cfg.attribute == "text" {
-        //                                 el.text().await.unwrap_or_default()
-        //                             } else {
-        //                                 el.attr(&element_cfg.attribute).await.unwrap_or(None).unwrap_or_default()
-        //                             };
-        //                             let _ = sender.send(val).await;
-        //                         } else {
-        //                             let _ = sender.send("Element not found".to_string()).await;
-        //                         }
-        //                     } else {
-        //                         println!("Configuration not found for key: {}", key);
-        //                         let _ = sender.send("Key not found in config".to_string()).await;
-        //                     }
-        //                 }
-                
-        //                 BrowserCommand::PredefinedKey(key) => {
-        //                     if let Ok(el) = driver_clone.find(By::Tag("body")).await {
-        //                         if let Err(e) = el.send_keys(key).await {
-        //                             eprintln!("Failed to send predefined key: {:?}", e);
-        //                         }
-        //                     }
-        //                 }
-                
-        //                 BrowserCommand::RawCharacter(text) => {
-        //                     if let Ok(el) = driver_clone.find(By::Tag("body")).await {
-        //                         if let Err(e) = el.send_keys(text.as_str()).await {
-        //                             eprintln!("Failed to send raw character key: {:?}", e);
-        //                         }
-        //                     }
-        //                 }
-                
-        //                 BrowserCommand::FetchUrl(sender) => {
-        //                     if let Ok(url) = driver_clone.current_url().await {
-        //                         let url_string = url.to_string();
-        //                         if let Err(e) = sender.send(url_string).await {
-        //                             eprintln!("Failed to send URL: {:?}", e);
-        //                         }
-        //                     } else {
-        //                         eprintln!("Failed to fetch URL");
-        //                     }
-        //                 }
-                
-        //                 BrowserCommand::Goto(key) => {
-        //                     println!("Going to URL for key: {}", key);
-        //                     if let Some(url) = goto_config.get(&key) {
-        //                         if let Err(e) = driver_clone.goto(url).await {
-        //                             eprintln!("Failed to go to URL {}: {:?}", url, e);
-        //                         }
-        //                     } else {
-        //                         eprintln!("No URL found for key: {}", key);
-        //                     }
-        //                 }
-                           
-        //             }
-        //         });
-        //     }
-        //});
-
-
-        // ======================================================================================
 
         task::spawn(async move {
             while let Some(command) = rx.recv().await {
@@ -152,6 +78,27 @@ impl Browser {
         
                 tokio::spawn(async move {
                     match command {
+                        BrowserCommand::ClickElement(key) => {
+                            if let Some(element_cfg) = elements_config.get(&key) {
+                                let locator = if element_cfg.element.trim().starts_with('/') {
+                                    By::XPath(&element_cfg.element)
+                                } else {
+                                    By::Css(&element_cfg.element)
+                                };
+                        
+                                if let Ok(el) = driver_clone.find(locator).await {
+                                    if let Err(e) = el.click().await {
+                                        eprintln!("Failed to click element: {:?}", e);
+                                    } else {
+                                        println!("Clicked element for key: {}", key);
+                                    }
+                                } else {
+                                    eprintln!("Element not found for key: {}", key);
+                                }
+                            } else {
+                                eprintln!("No element config for key: {}", key);
+                            }
+                        }
                         BrowserCommand::GetElementValue(key, sender) => {
 
                             if let Some(element_cfg) = elements_config.get(&key) {

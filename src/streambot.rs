@@ -92,9 +92,16 @@ impl Bot {
                     } else {
                         eprintln!("Failed to fetch URL");
                     }
+               
                     None
                 }
-                _ => {
+                _ => 
+                {   if command.starts_with("toggle_") {
+                    let key = command.trim_start_matches("toggle_").to_string();
+                    let _ = self.browser_tx.send(BrowserCommand::ClickElement(key)).await;
+                    return;
+                    }
+                    
                     // Try dynamic element fetch command
                     let (sender, mut receiver) = mpsc::channel(1);
                         if let Err(e) = self.browser_tx.send(BrowserCommand::GetElementValue(command.clone(), sender)).await {
@@ -111,7 +118,9 @@ impl Bot {
                     } else {
                         Some(BrowserCommand::Goto(command))
                     }
+                    
                 }
+
             };
 
             if let Some(command) = browser_command {
