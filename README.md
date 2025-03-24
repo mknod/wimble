@@ -46,6 +46,12 @@ google = "https://google.com"
 
 [browser.elements]
 youtube_url = { element = "//*[@id='movie_player']/div[3]/div[2]/div/a", attribute = "href" }
+# You can also toggle elements using !toggle_ to toggle box_a in chat
+# !toggle_box_a, you can name these commands anything you want they arent constrained by the
+# element name 
+box_a  = { element = "//label[@for='box_a']", attribute = "text" }
+
+
 ```
 
 🎮 Chat Commands
