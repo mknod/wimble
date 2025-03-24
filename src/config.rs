@@ -25,7 +25,6 @@ pub struct ElementConfig {
 
 }
 
-
 #[derive(Debug, Deserialize)]
 pub struct BrowserConfig {
     pub enabled: bool,
@@ -36,10 +35,17 @@ pub struct BrowserConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct EventConfig {
+    pub command: String,
+    pub times: u32,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct AppConfig {
     pub global: GlobalConfig,
     pub streambot: StreambotConfig,
     pub browser: BrowserConfig,
+    pub events: HashMap<String, EventConfig>,
 }
 
 pub fn load_config() -> Result<AppConfig, config::ConfigError> {
