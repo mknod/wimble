@@ -83,7 +83,7 @@ You can specify elements to query using XPath:
 ```
 [browser.elements]
 youtube_url = { element = "//*[@id='movie_player']/div[3]/div[2]/div/a", attribute = "href" }
-Then use !get_url to have Wimble fetch and print the value of those elements (like a video link).
+Then use !youtube_url to have Wimble fetch and print the value of those elements (like a video link).
 ```
 
 📜 License (in Legalese)
