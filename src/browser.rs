@@ -112,6 +112,7 @@ impl Browser {
 
                         BrowserCommand::PredefinedKey(key) => {
                            if let Ok(el) = driver_clone.find(By::Tag("body")).await {
+                                println!("Sending predefined key: {:?}", key);
                                if let Err(e) = el.send_keys(key).await {
                                    eprintln!("Failed to send predefined key: {:?}", e);
                                }

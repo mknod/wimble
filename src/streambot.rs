@@ -7,14 +7,27 @@ use twitch_irc::TwitchIRCClient;
 use twitch_irc::SecureTCPTransport;
 use twitch_irc::message::PrivmsgMessage;
 use twitch_irc::message::ServerMessage;
-use thirtyfour::common::keys;
+use crate::command_source::CommandSource;
+use async_trait::async_trait;
+use crate::command_parser::parse_command;
+use crate::command_parser::CommandAction;
+
 
 pub struct Bot {
     incoming_messages: mpsc::UnboundedReceiver<ServerMessage>, // Receiver for incoming Twitch messages
+    // Warnings about client not being used are harmless
     client: TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>, // Twitch IRC client
     command_symbol: String, // Symbol used to identify commands
-    channel: String,
+    //channel: String,
     browser_tx: mpsc::Sender<BrowserCommand>, // Sender for sending keypress commands to the browser
+}
+
+#[async_trait]
+impl CommandSource for Bot {
+    async fn run(&mut self, browser_tx: mpsc::Sender<BrowserCommand>) {
+        self.browser_tx = browser_tx;
+        self.run().await;
+    }
 }
 
 impl Bot {
@@ -35,7 +48,6 @@ impl Bot {
         let access_token = &config.access_token;
         let channel = config.channel.clone();
         let command_symbol = config.command_symbol.clone();
-
         // Create a new Twitch IRC client with the specified credentials
         let client_config = ClientConfig::new_simple(
             StaticLoginCredentials::new(username.to_string(), Some(access_token.to_string()))
@@ -45,7 +57,7 @@ impl Bot {
         // Join the specified Twitch channel
         client.join(channel.to_string()).expect("Failed to join channel");
 
-        Self { incoming_messages, client, command_symbol, channel, browser_tx }
+        Self { incoming_messages, client, command_symbol, browser_tx }
         
     }
 
@@ -56,80 +68,33 @@ impl Bot {
         // Listen for incoming Twitch messages
         while let Some(message) = self.incoming_messages.recv().await {
             if let ServerMessage::Privmsg(chat_message) = message {
-                self.match_command( chat_message).await;
+                self.handle_chat_command(chat_message).await;
             }
         }
     }
 
-    /// Matches and executes commands from chat messages.
-    /// 
-    /// # Arguments
-    /// 
-    /// * `chat_message` - The chat message containing the command.
-    pub async fn match_command(&self, chat_message: PrivmsgMessage) {
-        let content = chat_message.message_text.clone();
-        let channel = &self.channel;
-        if content.starts_with(&self.command_symbol) {
-            
-            let command = content[self.command_symbol.len()..].trim().to_string();
+    pub async fn handle_chat_command(&self, message: PrivmsgMessage) {
+        let content = message.message_text.clone();
+        let tx = self.browser_tx.clone();
+        let symbol = &self.command_symbol;
+        //let channel = self.channel.clone();
+        //let client = self.client.clone();
+    
+        let result = parse_command(&content, &symbol, &tx).await;
 
-            let browser_command = match command.as_str() {
-
-                "up" => Some(BrowserCommand::PredefinedKey(keys::Key::Up)),
-                "down" => Some(BrowserCommand::PredefinedKey(keys::Key::Down)),
-                "left" => Some(BrowserCommand::PredefinedKey(keys::Key::Left)),
-                "right" => Some(BrowserCommand::PredefinedKey(keys::Key::Right)),
-                "space" => Some(BrowserCommand::PredefinedKey(keys::Key::Space)),
-                "enter" => Some(BrowserCommand::PredefinedKey(keys::Key::Enter)),
-                "esc" => Some(BrowserCommand::PredefinedKey(keys::Key::Escape)),
-                "delete" => Some(BrowserCommand::PredefinedKey(keys::Key::Delete)),
-                "get_url" => {
-                    let (url_sender, mut url_receiver) = mpsc::channel(1);
-                    self.browser_tx.send(BrowserCommand::FetchUrl(url_sender)).await.unwrap();
-                    if let Some(url) = url_receiver.recv().await {
-                        println!("Fetched URL: {}", url);
-                        self.client.say(channel.to_string(), url).await.expect("Failed to send message");
-                    } else {
-                        eprintln!("Failed to fetch URL");
-                    }
-               
-                    None
-                }
-                _ => 
-                {   if command.starts_with("toggle_") {
-                    let key = command.trim_start_matches("toggle_").to_string();
-                    let _ = self.browser_tx.send(BrowserCommand::ClickElement(key)).await;
-                    return;
-                    }
-                    
-                    // Try dynamic element fetch command
-                    let (sender, mut receiver) = mpsc::channel(1);
-                        if let Err(e) = self.browser_tx.send(BrowserCommand::GetElementValue(command.clone(), sender)).await {
-                            eprintln!("Failed to send GetElementValue: {}", e);
-                            return;
-                        }
-                        if let Some(value) = receiver.recv().await {
-                            let msg = format!("{}: {}", command, value);
-                            self.client.say(channel.to_string(), msg).await.expect("Failed to send message");
-                        }                                
-                    
-                    if command.len() == 1 {
-                        Some(BrowserCommand::RawCharacter(command))
-                    } else {
-                        Some(BrowserCommand::Goto(command))
-                    }
-                    
-                }
-
-            };
-
-            if let Some(command) = browser_command {
-                if let Err(e) = self.browser_tx.send(command).await {
-                    eprintln!("Failed to send key command: {}", e);
-                }
+        match result {
+            CommandAction::SendToBrowser(cmd) => {
+                let _ = tx.send(cmd).await;
             }
+            CommandAction::WithResponse(cmd, msg) => {
+                let _ = tx.send(cmd).await;
+                println!("[Response] {}", msg);
+            }
+            CommandAction::ResponseOnly(msg) => {
+                println!("[Response] {}", msg);
+            }
+            CommandAction::Noop => {} // ignore
         }
     }
 
 }
-
