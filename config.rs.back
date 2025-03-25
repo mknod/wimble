@@ -1,0 +1,79 @@
+use crate::config::StreambotConfig;
+use crate::browser::BrowserCommand;
+use crate::command_source::CommandSource;
+use crate::command_parser::{parse_command, CommandAction};
+
+use twitch_irc::{
+    ClientConfig, SecureTCPTransport, TwitchIRCClient,
+    login::StaticLoginCredentials,
+    message::{PrivmsgMessage, ServerMessage},
+};
+
+use tokio::sync::mpsc;
+use async_trait::async_trait;
+use thirtyfour::common::keys;
+
+pub struct Bot {
+    incoming_messages: mpsc::UnboundedReceiver<ServerMessage>,
+    client: TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>,
+    command_symbol: String,
+    channel: String,
+    browser_tx: mpsc::Sender<BrowserCommand>,
+}
+
+impl Bot {
+    pub fn new(config: &StreambotConfig, browser_tx: mpsc::Sender<BrowserCommand>) -> Self {
+        let client_config = ClientConfig::new_simple(
+            StaticLoginCredentials::new(config.username.clone(), Some(config.access_token.clone())),
+        );
+
+        let (incoming_messages, client) = TwitchIRCClient::new(client_config);
+        client.join(config.channel.clone()).expect("Failed to join channel");
+
+        Self {
+            incoming_messages,
+            client,
+            command_symbol: config.command_symbol.clone(),
+            channel: config.channel.clone(),
+            browser_tx,
+        }
+    }
+
+    /// Respond to a parsed command result (from chat).
+    async fn handle_command_action(&self, action: CommandAction) {
+        match action {
+            CommandAction::SendToBrowser(cmd) => {
+                let _ = self.browser_tx.send(cmd).await;
+            }
+            CommandAction::WithResponse(cmd, msg) => {
+                let _ = self.browser_tx.send(cmd).await;
+                let _ = self.client.say(self.channel.clone(), msg).await;
+            }
+            CommandAction::ResponseOnly(msg) => {
+                let _ = self.client.say(self.channel.clone(), msg).await;
+            }
+            CommandAction::Noop => {} // Ignore non-commands
+        }
+    }
+
+    /// Handle a chat message
+    async fn handle_chat_message(&self, chat_message: PrivmsgMessage) {
+        let content = chat_message.message_text.clone();
+
+        let action = parse_command(&content, &self.command_symbol, &self.browser_tx).await;
+        self.handle_command_action(action).await;
+    }
+}
+
+#[async_trait]
+impl CommandSource for Bot {
+    async fn run(&mut self, _browser_tx: mpsc::Sender<BrowserCommand>) {
+        println!("Streambot is running...");
+
+        while let Some(message) = self.incoming_messages.recv().await {
+            if let ServerMessage::Privmsg(chat_message) = message {
+                self.handle_chat_message(chat_message).await;
+            }
+        }
+    }
+}
