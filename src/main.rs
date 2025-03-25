@@ -2,7 +2,6 @@ use wimble::streambot::Bot;
 use wimble::browser::Browser;
 use wimble::config::load_config;
 use wimble::command_source::CommandSource;
-//use stdin_source::StdinSource;
 use wimble::stdin_source::StdinSource;
 
 
