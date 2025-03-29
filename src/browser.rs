@@ -141,11 +141,13 @@ impl Browser {
                        BrowserCommand::Goto(key) => {
                            println!("Going to URL for key: {}", key);
                            if let Some(url) = goto_config.get(&key) {
+                            println!("{:?}", url.clone());
+                            
                                if let Err(e) = driver_clone.goto(url).await {
-                                   eprintln!("Failed to go to URL {}: {:?}", url, e);
+                                   println!("Failed to go to URL {}: {:?}", url, e);
                                }
                            } else {
-                               eprintln!("No URL found for key: {}", key);
+                               println!("No URL found for key: {}", key);
                            }
                        }
                     }

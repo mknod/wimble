@@ -18,7 +18,7 @@ pub struct Bot {
     // Warnings about client not being used are harmless
     client: TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>, // Twitch IRC client
     command_symbol: String, // Symbol used to identify commands
-    //channel: String,
+    channel: String,
     browser_tx: mpsc::Sender<BrowserCommand>, // Sender for sending keypress commands to the browser
 }
 
@@ -57,7 +57,7 @@ impl Bot {
         // Join the specified Twitch channel
         client.join(channel.to_string()).expect("Failed to join channel");
 
-        Self { incoming_messages, client, command_symbol, browser_tx }
+        Self { incoming_messages, client, command_symbol, channel, browser_tx }
         
     }
 
@@ -77,7 +77,7 @@ impl Bot {
         let content = message.message_text.clone();
         let tx = self.browser_tx.clone();
         let symbol = &self.command_symbol;
-        //let channel = self.channel.clone();
+        let channel = self.channel.clone();
         //let client = self.client.clone();
     
         let result = parse_command(&content, &symbol, &tx).await;
@@ -89,11 +89,17 @@ impl Bot {
             CommandAction::WithResponse(cmd, msg) => {
                 let _ = tx.send(cmd).await;
                 println!("[Response] {}", msg);
+                self.client.say(channel, msg.clone()).await.expect("Failed to send message");
+
             }
             CommandAction::ResponseOnly(msg) => {
-                println!("[Response] {}", msg);
+                println!("[ResponseOnly] {}", msg.clone());
             }
             CommandAction::Noop => {} // ignore
+
+
+
+
         }
     }
 
