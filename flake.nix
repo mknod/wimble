@@ -14,23 +14,19 @@
         inherit system;
         config.allowUnfree = true; # Needed for Chrome
       };
-    in
-    {
-      devShells.${system}.default = pkgs.mkShell {
-        buildInputs = [
-          rust-devshell.devShells.${system}.default
-          pkgs.google-chrome
-          pkgs.chromedriver
-        ];
-
-        # Optional: ensure ChromeDriver matches Chrome version (basic workaround)
+      rustShell = rust-devshell.devShells.${system}.default.overrideAttrs (old: {
+        buildInputs = old.buildInputs ++ [ pkgs.google-chrome pkgs.chromedriver ];
         shellHook = ''
+          ${old.shellHook or ""}
           echo "🦀 Rust dev shell with Chrome + ChromeDriver"
-          echo "🔍 Google Chrome: $(google-chrome --version)"
+          echo "🔍 Google Chrome: $(google-chrome-stable --version)"
           echo "🚗 ChromeDriver: $(chromedriver --version)"
         '';
-      };
+      });
+    in
+    {
+      devShells.${system}.default = rustShell;
 
-      packages.${system}.default = rust-devshell.packages.${system}.default;
+      packages.${system}.default = rust-devshell.packages.${system}.rustc;
     };
 }
