@@ -1,18 +1,36 @@
 {
-  description = "Wimble Devshell";
+  description = "My Rust Project";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-
-    # Replace this with HTTPS if SSH isn't available on all environments
-    rust-devshell.url = "git+ssh://git@cavern.rmrn.wtf:/rust-devshell.git";
+    rust-devshell.url = "github:mknod/rust-devshell";
     rust-devshell.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = { self, nixpkgs, rust-devshell, ... }:
-    rust-devshell.outputs // {
-      # Optional: You can define your own devShell using rust-devshell tooling
-      devShells.default = rust-devshell.devShells.default;
-      packages.default = rust-devshell.packages.default;
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true; # Needed for Chrome
+      };
+    in
+    {
+      devShells.${system}.default = pkgs.mkShell {
+        buildInputs = [
+          rust-devshell.devShells.${system}.default
+          pkgs.google-chrome
+          pkgs.chromedriver
+        ];
+
+        # Optional: ensure ChromeDriver matches Chrome version (basic workaround)
+        shellHook = ''
+          echo "🦀 Rust dev shell with Chrome + ChromeDriver"
+          echo "🔍 Google Chrome: $(google-chrome --version)"
+          echo "🚗 ChromeDriver: $(chromedriver --version)"
+        '';
+      };
+
+      packages.${system}.default = rust-devshell.packages.${system}.default;
     };
 }
