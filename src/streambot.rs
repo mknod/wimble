@@ -10,7 +10,9 @@ use twitch_irc::message::ServerMessage;
 use crate::command_source::CommandSource;
 use async_trait::async_trait;
 use crate::command_parser::parse_command;
-use crate::command_parser::CommandAction;
+//use crate::command_parser::CommandAction;
+use crate::command_parser::handle_parsed_command;
+
 
 
 pub struct Bot {
@@ -78,29 +80,13 @@ impl Bot {
         let tx = self.browser_tx.clone();
         let symbol = &self.command_symbol;
         let channel = self.channel.clone();
-        //let client = self.client.clone();
     
         let result = parse_command(&content, &symbol, &tx).await;
-
-        match result {
-            CommandAction::SendToBrowser(cmd) => {
-                let _ = tx.send(cmd).await;
-            }
-            CommandAction::WithResponse(cmd, msg) => {
-                let _ = tx.send(cmd).await;
-                println!("[Response] {}", msg);
-                self.client.say(channel, msg.clone()).await.expect("Failed to send message");
-
-            }
-            CommandAction::ResponseOnly(msg) => {
-                println!("[ResponseOnly] {}", msg.clone());
-            }
-            CommandAction::Noop => {} // ignore
-
-
-
-
-        }
+    
+        handle_parsed_command(result, &tx, |msg| {
+            println!("[Response] {}", msg);
+            let _ = self.client.say(channel.clone(), msg);
+        }).await;
     }
 
 }

@@ -65,3 +65,25 @@ pub async fn parse_command(
         }
     }
 }
+
+pub async fn handle_parsed_command<F>(
+    result: CommandAction,
+    browser_tx: &mpsc::Sender<BrowserCommand>,
+    respond: F,
+) where
+    F: Fn(String),
+{
+    match result {
+        CommandAction::SendToBrowser(cmd) => {
+            let _ = browser_tx.send(cmd).await;
+        }
+        CommandAction::WithResponse(cmd, msg) => {
+            let _ = browser_tx.send(cmd).await;
+            respond(msg);
+        }
+        CommandAction::ResponseOnly(msg) => {
+            respond(msg);
+        }
+        CommandAction::Noop => {}
+    }
+}
