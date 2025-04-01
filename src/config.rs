@@ -15,6 +15,16 @@ pub struct StreambotConfig {
     pub command_symbol: String,
     pub access_token: String,
     pub refresh_token: String,
+    pub output: OutputMode, 
+
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum OutputMode {
+    Chat,
+    Stdout,
+    Both,
 }
 
 #[derive(Debug, Deserialize, Clone)]
