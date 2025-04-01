@@ -31,7 +31,6 @@ pub struct BrowserConfig {
     pub start_url: String,
     pub goto: HashMap<String, String>,
     pub elements: HashMap<String, ElementConfig>, // Maps names to ElementConfig
-
 }
 
 
@@ -49,3 +48,4 @@ pub fn load_config() -> Result<AppConfig, config::ConfigError> {
     
     settings.try_deserialize::<AppConfig>()
 }
+

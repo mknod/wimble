@@ -230,59 +230,62 @@ impl Browser {
         }
     }
 
-
-   pub async fn fetch_element_value(driver: &WebDriver, element_cfg: &ElementConfig) -> WebDriverResult<String> {
-    // FYI there is a "bug" I am stripping the # from the iframe selector here for my own purposes, probably a good idea to find if 
-    // #iframe exists or if iframe without the # exists on the page. 
-    // Check if iframe exists in config.toml
-    if let Some(iframe_selector) = &element_cfg.iframe {
-        //let iframe_format = format!("{}", iframe_selector.strip_prefix("#").unwrap());
-        println!("[fetch_element_value] Looking for iframe: {}", iframe_selector);
-        let iframen = iframe_selector.strip_prefix("#").unwrap();
-        let iframe_locator = driver.find(By::Id(iframen)).await;
-        match iframe_locator {
-            Ok(iframe) => {
-                if let Err(e) = iframe.enter_frame().await {
-                    println!("[fetch_element_value] Failed to enter iframe: {:?}", e);
-                    return Ok("Failed to enter iframe".into());
-                } else {
-                    println!("[fetch_element_value] Entered iframe");
+    pub async fn fetch_element_value(
+        driver: &WebDriver,
+        element_cfg: &ElementConfig
+    ) -> WebDriverResult<String> {
+        // If config says we should enter an iframe, do so here:
+        if let Some(iframe_selector) = &element_cfg.iframe {
+            let iframe_locator = driver.find(By::Id(iframe_selector)).await;
+            match iframe_locator {
+                Ok(iframe) => {
+                    if let Err(e) = iframe.enter_frame().await {
+                        println!("Failed to enter iframe: {:?}", e);
+                        return Ok("Failed to enter iframe".into());
+                    }
+                }
+                Err(e) => {
+                    println!("Failed to find iframe: {:?}", e);
+                    return Ok("Failed to find iframe".into());
                 }
             }
-            Err(e) => {
-                println!("[fetch_element_value] Failed to find iframe: {:?}", e);
-                return Ok("Failed to find iframe".into());
-            }
         }
+    
+        // Lookup the element (with a timeout)
+        let locator = if element_cfg.element.trim().starts_with('/') {
+            By::XPath(&element_cfg.element)
+        } else {
+            By::Css(&element_cfg.element)
+        };
+        let el_result = timeout(Duration::from_secs(5), driver.find(locator)).await;
+    
+        // We store the final “extracted value” in a variable
+        let extracted_value = match el_result {
+            Ok(Ok(el)) => {
+                println!("[fetch_element_value] Element found!");
+                if element_cfg.attribute == "text" {
+                    el.text().await
+                } else {
+                    Ok(el.attr(&element_cfg.attribute).await?.unwrap_or_default())
+                }
+            }
+            Ok(Err(e)) => {
+                println!("[fetch_element_value] find() error: {:?}", e);
+                Ok("Element not found (error)".into())
+            }
+            Err(_) => {
+                println!("[fetch_element_value] Timeout waiting for element");
+                Ok("Element not found (timeout)".into())
+            }
+        };
+    
+        // If we had switched into an iframe, switch back to default content:
+        if element_cfg.iframe.is_some() {
+            driver.switch_to().default_content().await?;
+        }
+    
+        // Finally, return the extracted value
+        extracted_value
     }
 
-    // Lookup the element
-    let locator = if element_cfg.element.trim().starts_with('/') {
-        By::XPath(&element_cfg.element)
-    } else {
-        By::Css(&element_cfg.element)
-    };
-
-    let el_result = timeout(Duration::from_secs(5), driver.find(locator)).await;
-
-    match el_result {
-        Ok(Ok(el)) => {
-            println!("[fetch_element_value] Element found!");
-            if element_cfg.attribute == "text" {
-                el.text().await
-            } else {
-                Ok(el.attr(&element_cfg.attribute).await?.unwrap_or_default())
-            }
-        }
-        Ok(Err(e)) => {
-            println!("[fetch_element_value] find() error: {:?}", e);
-            Ok("Element not found (error)".into())
-        }
-        Err(_) => {
-            println!("[fetch_element_value] Timeout waiting for element");
-            Ok("Element not found (timeout)".into())
-            }
-        }
-    }
 }
-
