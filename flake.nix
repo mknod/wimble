@@ -17,10 +17,12 @@
       rustShell = rust-devshell.devShells.${system}.default.overrideAttrs (old: {
         buildInputs = old.buildInputs ++ [ pkgs.google-chrome pkgs.chromedriver ];
         shellHook = ''
-          ${old.shellHook or ""}
-          echo "🦀 Rust dev shell with Chrome + ChromeDriver"
-          echo "🔍 Google Chrome: $(google-chrome-stable --version)"
-          echo "🚗 ChromeDriver: $(chromedriver --version)"
+        mkdir -p "$HOME/.cache/nix-chrome"
+        ln -sf ${pkgs.google-chrome}/bin/google-chrome-stable "$HOME/.cache/nix-chrome/google-chrome"
+        export PATH="$HOME/.cache/nix-chrome:$PATH"
+
+        echo "✅ Aliased google-chrome-stable → google-chrome"
+        echo "🔍 which google-chrome: $(which google-chrome)"
         '';
       });
     in
